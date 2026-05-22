@@ -20,7 +20,7 @@ export default function MyBookingsPage() {
       try {
         console.log("Starting to fetch bookings...");
         const result = await getMyBookings();
-        console.log("Bookings result:", result);
+        console.log("Bookings reference result:", result);
         
         if (isMounted) {
           setBookings(result || []);
