@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMyBookings, cancelBooking, BookingWithDetails } from "@/app/actions/bookings";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
-import { Trash2, RefreshCw, ArrowRight } from "lucide-react";
+import { format, parseISO, differenceInMinutes } from "date-fns";
+import { Trash2, RefreshCw, ArrowRight, AlertTriangle } from "lucide-react";
 
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
@@ -52,7 +52,7 @@ export default function MyBookingsPage() {
         toast.success("Booking cancelled successfully");
         setBookings((prev) => prev.filter((b) => b.id !== bookingId));
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to cancel booking");
       }
     } catch (error) {
       console.error("Error cancelling booking:", error);
@@ -61,6 +61,18 @@ export default function MyBookingsPage() {
       setCancellingId(null);
       setShowCancelConfirm(null);
     }
+  };
+
+  const getTimeUntilDeparture = (departsAt: string): { minutes: number; hours: number; withinTwoHours: boolean } => {
+    const departureTime = parseISO(departsAt);
+    const now = new Date();
+    const minutesRemaining = differenceInMinutes(departureTime, now);
+    
+    return {
+      minutes: minutesRemaining % 60,
+      hours: Math.floor(minutesRemaining / 60),
+      withinTwoHours: minutesRemaining < 120 && minutesRemaining > 0,
+    };
   };
 
   if (isLoading) {
@@ -155,7 +167,9 @@ export default function MyBookingsPage() {
                     </Link>
                     <button
                       onClick={() => setShowCancelConfirm(booking.id)}
-                      className="flex items-center gap-1 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors text-sm font-medium"
+                      className="flex items-center gap-1 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={getTimeUntilDeparture(booking.departsAt).withinTwoHours}
+                      title={getTimeUntilDeparture(booking.departsAt).withinTwoHours ? "Cannot cancel within 2 hours of departure" : ""}
                     >
                       <Trash2 className="w-4 h-4" />
                       Cancel
@@ -163,26 +177,83 @@ export default function MyBookingsPage() {
                   </div>
                 </div>
 
+                {/* Cancellation Warning - within 2 hours */}
+                {getTimeUntilDeparture(booking.departsAt).withinTwoHours && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-800">Cancellation Not Available</p>
+                      <p className="text-sm text-red-700 mt-1">
+                        Your flight departs in {getTimeUntilDeparture(booking.departsAt).hours}h {getTimeUntilDeparture(booking.departsAt).minutes}m. 
+                        Cancellations are not allowed within 2 hours of departure.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Cancel Confirmation Modal */}
-                {showCancelConfirm === booking.id && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800 mb-3">
-                      Are you sure you want to cancel this booking? This action cannot be undone.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleCancelBooking(booking.id)}
-                        disabled={cancellingId === booking.id}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm"
-                      >
-                        {cancellingId === booking.id ? "Cancelling..." : "Confirm Cancel"}
-                      </button>
-                      <button
-                        onClick={() => setShowCancelConfirm(null)}
-                        className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition-colors text-sm"
-                      >
-                        Keep Booking
-                      </button>
+                {showCancelConfirm === booking.id && !getTimeUntilDeparture(booking.departsAt).withinTwoHours && (
+                  <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                    onClick={() => !cancellingId && setShowCancelConfirm(null)}
+                  >
+                    <div 
+                      className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-start gap-3 mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">Confirm Cancellation</h3>
+                          <p className="text-sm text-gray-600 mt-1">This action cannot be undone</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Flight:</span>
+                          <span className="text-sm font-semibold text-gray-900">{booking.flightNo}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Route:</span>
+                          <span className="text-sm font-semibold text-gray-900">{booking.origin} → {booking.destination}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Departure:</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {format(parseISO(booking.departsAt), "MMM dd, HH:mm")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Seat:</span>
+                          <span className="text-sm font-semibold text-gray-900">{booking.seatNumber}</span>
+                        </div>
+                        <div className="border-t pt-2 flex justify-between">
+                          <span className="text-sm text-gray-600">Refund Amount:</span>
+                          <span className="text-sm font-bold text-green-600">${booking.totalPrice.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-gray-700 mb-6">
+                        Are you sure you want to cancel this booking? The full amount of ${booking.totalPrice.toFixed(2)} will be refunded to your account.
+                      </p>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleCancelBooking(booking.id)}
+                          disabled={cancellingId === booking.id}
+                          className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
+                        >
+                          {cancellingId === booking.id ? "Cancelling..." : "Yes, Cancel Booking"}
+                        </button>
+                        <button
+                          onClick={() => setShowCancelConfirm(null)}
+                          disabled={cancellingId === booking.id}
+                          className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-300 text-gray-800 rounded-lg transition-colors text-sm font-medium"
+                        >
+                          No, Keep It
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

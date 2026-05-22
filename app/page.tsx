@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useFlightStore } from "@/lib/stores/flightStore";
 import { getSession } from "@/app/actions/auth";
-import { Plane, Calendar, MapPin, Users } from "lucide-react";
+import { getFeaturedFlights, FeaturedRoute } from "@/app/actions/flights";
+import { Plane, Calendar, MapPin, Users, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 // Available airports from seed data
@@ -28,6 +29,24 @@ export default function Home() {
   const [departureDate, setDepartureDate] = useState("");
   const [passengers, setPassengers] = useState("1");
   const [isLoading, setIsLoading] = useState(false);
+  const [featuredFlights, setFeaturedFlights] = useState<FeaturedRoute[]>([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
+
+  // Load featured flights
+  useEffect(() => {
+    const loadFeatured = async () => {
+      try {
+        const flights = await getFeaturedFlights();
+        setFeaturedFlights(flights);
+      } catch (error) {
+        console.error("Error loading featured flights:", error);
+      } finally {
+        setIsLoadingFeatured(false);
+      }
+    };
+
+    loadFeatured();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,19 +89,45 @@ export default function Home() {
     }
   };
 
+  const handleFeaturedFlightClick = async (featuredOrigin: string, featuredDestination: string) => {
+    try {
+      const session = await getSession();
+      if (!session) {
+        toast.error("Please login to book flights");
+        router.push("/auth/login");
+        return;
+      }
+
+      // Set default departure date to today
+      const today = new Date().toISOString().split("T")[0];
+      
+      setSearchQuery({
+        origin: featuredOrigin,
+        destination: featuredDestination,
+        departureDate: today,
+        passengerCount: 1,
+      });
+      setCurrentBookingStep("results");
+      router.push("/search/results");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to search flights");
+    }
+  };
+
   return (
     <div 
-  className="relative"
-  style={{
-    minHeight: 'calc(100vh - 64px)',
-    backgroundImage: 'url(/bg_flight.png)',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat'
-  }}
->
+      className="relative"
+      style={{
+        minHeight: 'calc(100vh - 64px)',
+        backgroundImage: 'url(/bg_flight.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
       {/* Overlay for better text contrast */}
-      <div className="absolute inset-0  pointer-events-none"></div>
+      <div className="absolute inset-0 pointer-events-none"></div>
       
       {/* Hero Section */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
@@ -101,7 +146,7 @@ export default function Home() {
         </div>
 
         {/* Search Form */}
-        <div className="bg-white rounded-lg shadow-xl p-6 sm:p-8 max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-xl p-6 sm:p-8 max-w-4xl mx-auto mb-16">
           <form onSubmit={handleSearch} className="space-y-6">
             {/* First Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -205,24 +250,59 @@ export default function Home() {
           </form>
         </div>
 
-        {/* Features */}
-        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow-md text-center">
-            <div className="text-3xl mb-3">✈️</div>
-            <h3 className="font-semibold text-gray-900 mb-2">Easy Booking</h3>
-            <p className="text-sm text-gray-600">Book your flights in just a few clicks</p>
+        {/* Featured Flights Section */}
+        {!isLoadingFeatured && featuredFlights.length > 0 && (
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-white mb-2">✨ Popular Routes</h2>
+              <p className="text-gray-100">Browse our most booked flights and find amazing deals</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {featuredFlights.map((route, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleFeaturedFlightClick(route.origin, route.destination)}
+                  className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all text-left group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Route</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-lg font-bold text-gray-900">{route.origin}</span>
+                        <ArrowRight className="w-5 h-5 text-blue-600" />
+                        <span className="text-lg font-bold text-gray-900">{route.destination}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">From</span>
+                      <span className="text-2xl font-bold text-blue-600">${route.minPrice}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Available Flights</span>
+                      <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
+                        {route.flightCount} flights
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2 text-blue-600 font-semibold group-hover:gap-3 transition-all">
+                    Book Now
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md text-center">
-            <div className="text-3xl mb-3">🛫</div>
-            <h3 className="font-semibold text-gray-900 mb-2">Live Availability</h3>
-            <p className="text-sm text-gray-600">Real-time seat availability updates</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md text-center">
-            <div className="text-3xl mb-3">📱</div>
-            <h3 className="font-semibold text-gray-900 mb-2">Mobile Ready</h3>
-            <p className="text-sm text-gray-600">Book flights from any device</p>
-          </div>
-        </div> */}
+        )}
+      </div>
+      {/* // footer could go here if needed
+      // <Footer /> */}
+      <div className="absolute text-black bottom-0 left-0 w-full py-4 bg-gradient-to-t from-black/50 to-transparent text-center  text-sm">
+        &copy; {new Date().getFullYear()} FlightBooking. All rights reserved.
       </div>
     </div>
   );

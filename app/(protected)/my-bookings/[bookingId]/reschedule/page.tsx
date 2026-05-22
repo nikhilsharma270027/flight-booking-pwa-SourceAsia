@@ -36,7 +36,7 @@ export default function ReschedulePage() {
         const alternates = await getAlternateFlights(
           bookingData.origin,
           bookingData.destination,
-          "", // We'll filter in the server action
+          bookingData.flightId || "", // Exclude current flight from alternates
           7 // Next 7 days
         );
 

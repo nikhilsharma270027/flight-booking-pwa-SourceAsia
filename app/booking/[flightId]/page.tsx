@@ -75,6 +75,8 @@ export default function BookingPage() {
   const flightId = params.flightId as string;
 
   const selectedFlight = useFlightStore((state) => state.selectedFlight);
+  const searchQuery = useFlightStore((state) => state.searchQuery);
+  const passengerCount = searchQuery?.passengerCount || 1;
   const selectedSeat = useFlightStore((state) => state.selectedSeat);
   const optimisticSelectedSeat = useFlightStore((state) => state.optimisticSelectedSeat);
   const setSelectedSeat = useFlightStore((state) => state.setSelectedSeat);
@@ -88,17 +90,22 @@ export default function BookingPage() {
   const [isLoadingSeats, setIsLoadingSeats] = useState(true);
   const [currentStep, setCurrentStep] = useState<"seat-selection" | "passenger-details">("seat-selection");
   const [isBooking, setIsBooking] = useState(false);
-  const [passenger, setPassenger] = useState<Passenger>({
-    fullName: passengerFormData.fullName,
-    passportNo: passengerFormData.passportNo,
-    nationality: passengerFormData.nationality,
-    dob: passengerFormData.dob,
-  });
+  
+  const [selectedSeats, setSelectedSeats] = useState<string[]>(Array(passengerCount).fill(""));
+  const [passengersData, setPassengersData] = useState<Passenger[]>(
+    Array(passengerCount).fill(null).map(() => ({
+      fullName: "",
+      passportNo: "",
+      nationality: "",
+      dob: "",
+    }))
+  );
 
   // Subscribe to realtime seat updates
   useEffect(() => {
     const supabase = createClient();
     let channel: any = null;
+    let isSubscribed = false;
 
     const fetchSeatsAndSubscribe = async () => {
       try {
@@ -110,39 +117,47 @@ export default function BookingPage() {
           setFlightDetails(flightData);
         }
 
-        // Create and subscribe to realtime updates
-        channel = supabase
-          .channel(`seats-${flightId}`, {
-            config: {
-              broadcast: { self: false },
-            },
-          })
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "seats",
-              filter: `flight_id=eq.${flightId}`,
-            },
-            (payload: any) => {
-              console.log("Seat update received:", payload);
-              if (payload.new) {
-                const updatedSeat = payload.new as any;
-                setSeats((prevSeats) =>
-                  prevSeats.map((seat) =>
-                    seat.id === updatedSeat.id
-                      ? {
-                          ...seat,
-                          isAvailable: updatedSeat.is_available,
-                        }
-                      : seat
-                  )
-                );
-              }
+        // Create channel
+        channel = supabase.channel(`seats-${flightId}`, {
+          config: {
+            broadcast: { self: false },
+          },
+        });
+
+        // Add event listener before subscribing
+        channel.on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "seats",
+            filter: `flight_id=eq.${flightId}`,
+          },
+          (payload: any) => {
+            console.log("Seat update received:", payload);
+            if (payload.new) {
+              const updatedSeat = payload.new as any;
+              setSeats((prevSeats) =>
+                prevSeats.map((seat) =>
+                  seat.id === updatedSeat.id
+                    ? {
+                        ...seat,
+                        isAvailable: updatedSeat.is_available,
+                      }
+                    : seat
+                )
+              );
             }
-          )
-          .subscribe();
+          }
+        );
+
+        // Subscribe after listener is attached
+        channel.subscribe((status: string) => {
+          isSubscribed = status === "SUBSCRIBED";
+          if (status === "SUBSCRIBED") {
+            console.log("Realtime subscription established");
+          }
+        });
       } catch (error) {
         console.error("Error fetching seats:", error);
         toast.error("Failed to load seats");
@@ -154,7 +169,7 @@ export default function BookingPage() {
     fetchSeatsAndSubscribe();
 
     return () => {
-      if (channel) {
+      if (channel && isSubscribed) {
         supabase.removeChannel(channel);
       }
     };
@@ -166,64 +181,91 @@ export default function BookingPage() {
     first: seats.filter((s) => s.class === "first"),
   };
 
-  const handleSeatSelect = async (seatId: string) => {
-    setOptimisticSelectedSeat(seatId);
-    setSelectedSeat(seatId);
+  const handleSeatSelect = (passengerIdx: number, seatId: string) => {
+    const updatedSeats = [...selectedSeats];
+    updatedSeats[passengerIdx] = seatId;
+    setSelectedSeats(updatedSeats);
   };
 
-  const handlePassengerChange = (field: keyof Passenger, value: string) => {
-    setPassenger((prev) => ({ ...prev, [field]: value }));
-    setPassengerFormData({ [field]: value });
+  const handlePassengerChange = (passengerIdx: number, field: keyof Passenger, value: string) => {
+    const updatedPassengers = [...passengersData];
+    updatedPassengers[passengerIdx] = { ...updatedPassengers[passengerIdx], [field]: value };
+    setPassengersData(updatedPassengers);
+  };
+
+  const handleContinueToDetails = () => {
+    if (selectedSeats.some((seat) => !seat)) {
+      toast.error("Please select a seat for each passenger");
+      return;
+    }
+    setCurrentStep("passenger-details");
   };
 
   const handleCompleteBooking = async () => {
-    if (!selectedSeat || !passenger.fullName || !passenger.passportNo || !passenger.nationality || !passenger.dob) {
-      toast.error("Please fill in all fields and select a seat");
-      return;
+    // Validate all passengers
+    for (let i = 0; i < passengerCount; i++) {
+      const p = passengersData[i];
+      if (!p.fullName || !p.passportNo || !p.nationality || !p.dob) {
+        toast.error(`Please fill in all details for Passenger ${i + 1}`);
+        return;
+      }
+      if (!validatePassport(p.passportNo)) {
+        toast.error(`Invalid passport for Passenger ${i + 1}`);
+        return;
+      }
     }
 
     setIsBooking(true);
 
     try {
-      // Generate PNR code
-      const pnrCode = await generatePNRCode();
+      let lastBookingId: string | undefined = undefined;
 
-      // Calculate total price
-      const selectedSeatInfo = seats.find((s) => s.id === selectedSeat);
-      const totalPrice = (flightDetails?.basePrice || 0) + (selectedSeatInfo?.extraFee || 0);
+      // Create booking for each passenger
+      for (let i = 0; i < passengerCount; i++) {
+        const pnrCode = await generatePNRCode();
+        const seatId = selectedSeats[i];
+        const passengerInfo = passengersData[i];
 
-      // Lock seat and create booking
-      const lockResult = await lockSeat(selectedSeat, flightId, totalPrice, pnrCode);
+        const selectedSeatInfo = seats.find((s) => s.id === seatId);
+        const totalPrice = (flightDetails?.basePrice || 0) + (selectedSeatInfo?.extraFee || 0);
 
-      if (!lockResult.success) {
-        toast.error(lockResult.message);
-        setOptimisticSelectedSeat(null);
+        const lockResult = await lockSeat(seatId, flightId, totalPrice, pnrCode);
+
+        if (!lockResult.success) {
+          toast.error(`Failed to book seat for ${passengerInfo.fullName}: ${lockResult.message}`);
+          return;
+        }
+
+        const bookingId = lockResult.bookingId;
+        if (bookingId) {
+          lastBookingId = bookingId;
+        }
+
+        const passengerResult = await createPassenger(
+          bookingId!,
+          passengerInfo.fullName,
+          passengerInfo.passportNo,
+          passengerInfo.nationality,
+          passengerInfo.dob
+        );
+
+        if (!passengerResult.success) {
+          toast.error(`Failed to create passenger record for ${passengerInfo.fullName}`);
+          return;
+        }
+      }
+
+      if (!lastBookingId) {
+        toast.error("No bookings were created");
         return;
       }
 
-      const bookingId = lockResult.bookingId;
-
-      // Create passenger record
-      const passengerResult = await createPassenger(
-        bookingId!,
-        passenger.fullName,
-        passenger.passportNo,
-        passenger.nationality,
-        passenger.dob
-      );
-
-      if (!passengerResult.success) {
-        toast.error(passengerResult.message);
-        return;
-      }
-
-      toast.success("Booking confirmed!");
+      toast.success("All bookings confirmed!");
       setCurrentBookingStep("confirmation");
-      router.push(`/booking/confirmation/${bookingId}`);
+      router.push(`/booking/confirmation/${lastBookingId}`);
     } catch (error) {
       console.error("Booking error:", error);
       toast.error("Failed to complete booking");
-      setOptimisticSelectedSeat(null);
     } finally {
       setIsBooking(false);
     }
@@ -240,7 +282,7 @@ export default function BookingPage() {
   if (currentStep === "seat-selection") {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4">
           {/* Flight Info */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{flightDetails?.flightNo}</h1>
@@ -252,60 +294,87 @@ export default function BookingPage() {
             </p>
           </div>
 
-          {/* Seat Map */}
-          <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Select Your Seat</h2>
+          {/* Seat Selection for Each Passenger */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {Array.from({ length: passengerCount }).map((_, passengerIdx) => (
+              <div key={passengerIdx} className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Passenger {passengerIdx + 1}
+                </h2>
 
-            {/* Class Sections */}
-            <div className="space-y-8">
-              {(["first", "business", "economy"] as const).map((seatClass) => (
-                <div key={seatClass} className="border-t pt-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4 capitalize">
-                    {seatClass === "first" ? "First Class" : seatClass === "business" ? "Business Class" : "Economy Class"}
-                    {seatClass === "first" && " (+$200)"}
-                    {seatClass === "business" && " (+$100)"}
-                  </h3>
+                {/* Class Sections */}
+                <div className="space-y-4 mb-4">
+                  {(["first", "business", "economy"] as const).map((seatClass) => (
+                    <div key={seatClass} className="border-t pt-3">
+                      <h3 className="text-xs font-semibold text-gray-700 mb-2 capitalize">
+                        {seatClass === "first" ? "First" : seatClass === "business" ? "Business" : "Economy"}
+                        {seatClass === "first" && " (+$200)"}
+                        {seatClass === "business" && " (+$100)"}
+                      </h3>
 
-                  <div className="grid grid-cols-6 gap-2 overflow-x-auto pb-4">
-                    {seatsByClass[seatClass].map((seat) => {
-                      const isSelected = seat.id === (optimisticSelectedSeat || selectedSeat);
-                      const isOccupied = !seat.isAvailable;
+                      <div className="grid grid-cols-5 gap-1">
+                        {seatsByClass[seatClass].map((seat) => {
+                          const isSelected = seat.id === selectedSeats[passengerIdx];
+                          const isOtherPassengerSeat = selectedSeats.some((s, idx) => s === seat.id && idx !== passengerIdx);
+                          const isOccupied = !seat.isAvailable;
 
-                      return (
-                        <button
-                          key={seat.id}
-                          onClick={() => !isOccupied && handleSeatSelect(seat.id)}
-                          disabled={isOccupied}
-                          className={`
-                            w-10 h-10 rounded-md font-semibold text-xs transition-all
-                            ${isSelected ? "bg-blue-600 text-white border-2 border-blue-700" : ""}
-                            ${isOccupied && !isSelected ? "bg-gray-300 text-gray-500 cursor-not-allowed" : ""}
-                            ${!isSelected && !isOccupied ? "bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100" : ""}
-                          `}
-                          title={`${seat.seatNumber} - ${seat.class}`}
-                        >
-                          {seat.seatNumber}
-                        </button>
-                      );
-                    })}
-                  </div>
+                          return (
+                            <button
+                              key={seat.id}
+                              onClick={() => !isOccupied && !isOtherPassengerSeat && handleSeatSelect(passengerIdx, seat.id)}
+                              disabled={isOccupied || isOtherPassengerSeat}
+                              className={`
+                                w-8 h-8 rounded text-xs font-semibold transition-all
+                                ${isSelected ? "bg-blue-600 text-white" : ""}
+                                ${isOtherPassengerSeat ? "bg-orange-300 cursor-not-allowed" : ""}
+                                ${isOccupied && !isSelected ? "bg-gray-300 text-gray-500 cursor-not-allowed" : ""}
+                                ${!isSelected && !isOccupied && !isOtherPassengerSeat ? "bg-green-50 border border-green-500 text-green-700 hover:bg-green-100" : ""}
+                              `}
+                              title={seat.seatNumber}
+                            >
+                              {seat.seatNumber.replace(/[A-Z]/g, '')}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Legend */}
-            <div className="border-t mt-8 pt-6 flex gap-6 flex-wrap">
+                {/* Selected Seat Display */}
+                {selectedSeats[passengerIdx] && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900 text-center">
+                    ✓ Seat: <span className="font-semibold">{seats.find(s => s.id === selectedSeats[passengerIdx])?.seatNumber}</span>
+                  </div>
+                )}
+                {!selectedSeats[passengerIdx] && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 text-center">
+                    Please select a seat
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 className="font-semibold text-gray-900 mb-3">Legend</h3>
+            <div className="flex gap-4 flex-wrap text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-50 border-2 border-green-500 rounded-md"></div>
-                <span className="text-sm text-gray-600">Available</span>
+                <div className="w-5 h-5 bg-green-50 border border-green-500 rounded"></div>
+                <span className="text-gray-600">Available</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-600 rounded-md"></div>
-                <span className="text-sm text-gray-600">Your Selection</span>
+                <div className="w-5 h-5 bg-blue-600 rounded"></div>
+                <span className="text-gray-600">Your Seat</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-gray-300 rounded-md"></div>
-                <span className="text-sm text-gray-600">Occupied</span>
+                <div className="w-5 h-5 bg-orange-300 rounded"></div>
+                <span className="text-gray-600">Other Passenger</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 bg-gray-300 rounded"></div>
+                <span className="text-gray-600">Occupied</span>
               </div>
             </div>
           </div>
@@ -319,11 +388,10 @@ export default function BookingPage() {
               Back
             </button>
             <button
-              onClick={() => selectedSeat && setCurrentStep("passenger-details")}
-              disabled={!selectedSeat}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              onClick={handleContinueToDetails}
+              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
-              Continue
+              Continue to Passenger Details
             </button>
           </div>
         </div>
@@ -331,110 +399,120 @@ export default function BookingPage() {
     );
   }
 
+  // Passenger details step - show all passengers at once
   if (currentStep === "passenger-details") {
-    const selectedSeatInfo = seats.find((s) => s.id === selectedSeat);
-    const totalPrice = (flightDetails?.basePrice || 0) + (selectedSeatInfo?.extraFee || 0);
+    const totalPrice = selectedSeats.reduce((sum, seatId) => {
+      const seatInfo = seats.find((s) => s.id === seatId);
+      return sum + (flightDetails?.basePrice || 0) + (seatInfo?.extraFee || 0);
+    }, 0);
 
     return (
       <div className="min-h-[calc(100vh-64px)] bg-gray-50 py-8">
-        <div className="max-w-2xl mx-auto px-4">
-          {/* Summary */}
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Booking Summary */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Booking Summary</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Flight:</span>
-                <span className="font-semibold text-black">{flightDetails?.flightNo}</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Flight</p>
+                <p className="text-lg font-semibold text-gray-900">{flightDetails?.flightNo}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Seat:</span>
-                <span className="font-semibold text-black">{selectedSeatInfo?.seatNumber}</span>
+              <div>
+                <p className="text-sm text-gray-600">Passengers</p>
+                <p className="text-lg font-semibold text-gray-900">{passengerCount}</p>
               </div>
-              <div className="border-t pt-2 mt-2 flex justify-between font-bold">
-                <span className="text-gray-600">Total Price:</span>
-                <span className="text-blue-600">${totalPrice.toFixed(2)}</span>
+              <div className="border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-4">
+                <p className="text-sm text-gray-600">Total Price</p>
+                <p className="text-lg font-bold text-blue-600">${totalPrice.toFixed(2)}</p>
               </div>
             </div>
           </div>
 
-          {/* Passenger Form */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Passenger Details</h3>
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                <input
-                  type="text"
-                  value={passenger.fullName}
-                  onChange={(e) => handlePassengerChange("fullName", e.target.value)}
-                  className="w-full text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="John Doe"
-                />
-              </div>
+          {/* Passenger Forms */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {passengersData.map((passenger, idx) => (
+              <div key={idx} className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Passenger {idx + 1}</h3>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-900">
+                  Seat: <span className="font-semibold">{seats.find(s => s.id === selectedSeats[idx])?.seatNumber}</span>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Passport Number</label>
-                <input
-                  type="text"
-                  value={passenger.passportNo}
-                  onChange={(e) => handlePassengerChange("passportNo", e.target.value)}
-                  className={`w-full px-4 text-black py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-                    passenger.passportNo && !validatePassport(passenger.passportNo)
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                  placeholder="A123456789"
-                />
-                {passenger.passportNo && !validatePassport(passenger.passportNo) && (
-                  <p className="text-red-600 text-sm mt-1">
-                    Passport must start with a capital letter followed by 9 numbers (e.g., A123456789)
-                  </p>
-                )}
-              </div>
+                <form className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={passenger.fullName}
+                      onChange={(e) => handlePassengerChange(idx, "fullName", e.target.value)}
+                      className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="John Doe"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
-                <select
-                  value={passenger.nationality}
-                  onChange={(e) => handlePassengerChange("nationality", e.target.value)}
-                  className="w-full px-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white cursor-pointer"
-                >
-                  <option value="">Select Nationality</option>
-                  {COUNTRIES.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Passport</label>
+                    <input
+                      type="text"
+                      value={passenger.passportNo}
+                      onChange={(e) => handlePassengerChange(idx, "passportNo", e.target.value)}
+                      className={`w-full px-3 text-black py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+                        passenger.passportNo && !validatePassport(passenger.passportNo)
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="A123456789"
+                    />
+                    {passenger.passportNo && !validatePassport(passenger.passportNo) && (
+                      <p className="text-red-600 text-xs mt-1">Must be capital letter + 9 digits</p>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                <input
-                  type="date"
-                  value={passenger.dob}
-                  onChange={(e) => handlePassengerChange("dob", e.target.value)}
-                  className="w-full px-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                />
-              </div>
-            </form>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+                    <select
+                      value={passenger.nationality}
+                      onChange={(e) => handlePassengerChange(idx, "nationality", e.target.value)}
+                      className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white cursor-pointer"
+                    >
+                      <option value="">Select</option>
+                      {COUNTRIES.map((country) => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-            {/* Actions */}
-            <div className="flex gap-4 mt-8">
-              <button
-                onClick={() => setCurrentStep("seat-selection")}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleCompleteBooking}
-                disabled={isBooking || !passenger.fullName || !passenger.passportNo || !passenger.nationality || !passenger.dob || !validatePassport(passenger.passportNo)}
-                className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
-              >
-                {isBooking ? "Completing Booking..." : "Complete Booking"}
-              </button>
-            </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={passenger.dob}
+                      onChange={(e) => handlePassengerChange(idx, "dob", e.target.value)}
+                      className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                </form>
+              </div>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-4">
+            <button
+              onClick={() => setCurrentStep("seat-selection")}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleCompleteBooking}
+              disabled={isBooking}
+              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
+            >
+              {isBooking ? "Processing..." : `Complete Booking (${passengerCount} Passenger${passengerCount !== 1 ? "s" : ""})`}
+            </button>
           </div>
         </div>
       </div>

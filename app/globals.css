@@ -6,6 +6,11 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-rubik), sans-serif;
+  --font-mono: var(--font-rubik-mono), monospace;
+}
+
+@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

@@ -85,6 +85,16 @@ export default function SearchResults() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gray-50 py-8">
+      {/* add back button */}
+      <div className="max-w-4xl mx-auto px-4 mb-6">
+        <button
+          onClick={() => router.push("/")}
+          className="flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <ArrowRight className="w-4 h-4 rotate-180" />
+          Back to Search
+        </button>
+      </div>
       <div className="max-w-4xl mx-auto px-4">
         {/* Search Summary */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">

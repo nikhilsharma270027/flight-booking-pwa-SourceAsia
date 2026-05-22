@@ -15,6 +15,7 @@ export interface BookingRecord {
 
 export interface BookingWithDetails {
   id: string;
+  flightId?: string;
   flightNo: string;
   origin: string;
   destination: string;
@@ -69,6 +70,7 @@ export async function getMyBookings(): Promise<BookingWithDetails[]> {
     return (
       data?.map((booking: any) => ({
         id: booking.id,
+        flightId: booking.flight_id,
         flightNo: booking.flights?.flight_no || "",
         origin: booking.flights?.origin || "",
         destination: booking.flights?.destination || "",
@@ -176,6 +178,7 @@ export async function getBookingDetails(bookingId: string): Promise<BookingWithD
 
     return {
       id: data.id,
+      flightId: data.flight_id,
       flightNo: (data.flights as any)?.flight_no || "",
       origin: (data.flights as any)?.origin || "",
       destination: (data.flights as any)?.destination || "",
@@ -215,15 +218,20 @@ export async function getAlternateFlights(
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + daysAhead * 24 * 60 * 60 * 1000);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("flights")
       .select("*")
       .eq("origin", origin)
       .eq("destination", destination)
-      .neq("id", excludeFlightId)
       .gte("departs_at", startDate.toISOString())
-      .lte("departs_at", endDate.toISOString())
-      .order("departs_at", { ascending: true });
+      .lte("departs_at", endDate.toISOString());
+
+    // Only add the neq filter if excludeFlightId is provided
+    if (excludeFlightId && excludeFlightId.trim()) {
+      query = query.neq("id", excludeFlightId);
+    }
+
+    const { data, error } = await query.order("departs_at", { ascending: true });
 
     if (error) {
       console.error("Error fetching alternate flights:", error);

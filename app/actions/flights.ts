@@ -220,3 +220,62 @@ export async function generatePNRCode(): Promise<string> {
   }
   return pnr;
 }
+
+export interface FeaturedRoute {
+  origin: string;
+  destination: string;
+  minPrice: number;
+  flightCount: number;
+}
+
+export async function getFeaturedFlights(): Promise<FeaturedRoute[]> {
+  try {
+    const supabase = await createClient();
+
+    // Get all flights from today onwards
+    const today = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("flights")
+      .select("origin, destination, base_price")
+      .gte("departs_at", today)
+      .order("origin", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching featured flights:", error);
+      return [];
+    }
+
+    // Group by route and calculate min price and count
+    const routeMap = new Map<string, { minPrice: number; count: number }>();
+    
+    (data || []).forEach((flight) => {
+      const key = `${flight.origin}-${flight.destination}`;
+      if (!routeMap.has(key)) {
+        routeMap.set(key, { minPrice: flight.base_price, count: 1 });
+      } else {
+        const existing = routeMap.get(key)!;
+        existing.count += 1;
+        existing.minPrice = Math.min(existing.minPrice, flight.base_price);
+      }
+    });
+
+    // Convert to featured routes and sort by count (most popular first)
+    const featured = Array.from(routeMap.entries())
+      .map(([route, data]) => {
+        const [origin, destination] = route.split("-");
+        return {
+          origin,
+          destination,
+          minPrice: data.minPrice,
+          flightCount: data.count,
+        };
+      })
+      .sort((a, b) => b.flightCount - a.flightCount)
+      .slice(0, 6); // Top 6 routes
+
+    return featured;
+  } catch (error) {
+    console.error("Error in getFeaturedFlights:", error);
+    return [];
+  }
+}
