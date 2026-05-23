@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plane, LogOut, User, Home, ChevronDown, Menu, X } from "lucide-react";
+import { Plane, LogOut, User, Home, ChevronDown, Menu, X, Book } from "lucide-react";
 import { signOut, getSession } from "@/app/actions/auth";
 import { useUserStore } from "@/lib/stores/userStore";
 import { toast } from "sonner";
@@ -176,10 +176,11 @@ export default function Navigation() {
             </Link>
             {isLoggedIn && (
               <Link
-                href="/my-bookings"
-                onClick={() => setShowMobileMenu(false)}
-                className="block px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              href="/my-bookings"
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
               >
+              <Book className="w-4 h-4" />
                 My Bookings
               </Link>
             )}

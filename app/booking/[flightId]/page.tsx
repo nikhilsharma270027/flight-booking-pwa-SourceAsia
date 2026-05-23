@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useFlightStore } from "@/lib/stores/flightStore";
 import { getFlightSeats, getFlightDetails, SeatInfo, generatePNRCode, lockSeat, FlightDetails, createPassenger } from "@/app/actions/flights";
@@ -102,6 +102,8 @@ export default function BookingPage() {
     }))
   );
 
+  const subscriptionSetupRef = useRef<boolean>(false);
+
   // Subscribe to realtime seat updates
   useEffect(() => {
     const supabase = createClient();
@@ -117,6 +119,13 @@ export default function BookingPage() {
           setFlightDetails(flightData);
         }
 
+        // Only set up subscription once per mount
+        if (subscriptionSetupRef.current) {
+          console.log("Subscription already set up, skipping");
+          return;
+        }
+        subscriptionSetupRef.current = true;
+
         // Create channel
         channel = supabase.channel(`seats-${flightId}`, {
           config: {
@@ -124,38 +133,42 @@ export default function BookingPage() {
           },
         });
 
-        // Add event listener BEFORE subscribing
-        channel
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "seats",
-              filter: `flight_id=eq.${flightId}`,
-            },
-            (payload: any) => {
-              console.log("Seat update received:", payload);
-              if (payload.new) {
-                const updatedSeat = payload.new as any;
-                setSeats((prevSeats) =>
-                  prevSeats.map((seat) =>
-                    seat.id === updatedSeat.id
-                      ? {
-                          ...seat,
-                          isAvailable: updatedSeat.is_available,
-                        }
-                      : seat
-                  )
-                );
-              }
+        // Add event listener
+        channel.on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "seats",
+            filter: `flight_id=eq.${flightId}`,
+          },
+          (payload: any) => {
+            console.log("Seat update received:", payload);
+            if (payload.new) {
+              const updatedSeat = payload.new as any;
+              setSeats((prevSeats) =>
+                prevSeats.map((seat) =>
+                  seat.id === updatedSeat.id
+                    ? {
+                        ...seat,
+                        isAvailable: updatedSeat.is_available,
+                      }
+                    : seat
+                )
+              );
             }
-          )
-          .subscribe((status: string) => {
+          }
+        );
+
+        // Subscribe
+        await new Promise<void>((resolve) => {
+          channel.subscribe((status: string) => {
             if (status === "SUBSCRIBED") {
               console.log("Realtime subscription established");
+              resolve();
             }
           });
+        });
       } catch (error) {
         console.error("Error fetching seats:", error);
         toast.error("Failed to load seats");
@@ -167,7 +180,10 @@ export default function BookingPage() {
     fetchSeatsAndSubscribe();
 
     return () => {
-      // Always unsubscribe
+      // Reset the ref on cleanup so it can set up again if component remounts
+      subscriptionSetupRef.current = false;
+      
+      // Clean up subscription
       if (channel) {
         supabase.removeChannel(channel).then(() => {
           console.log("Channel unsubscribed");
