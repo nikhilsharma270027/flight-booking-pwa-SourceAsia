@@ -108,3 +108,11 @@ If you want, I can now:
 - Or push any remaining commits / create a release.
 
 Which should I do next?
+
+## Lighthouse Screenshot
+
+Below is the latest Lighthouse audit screenshot captured for the app (local dev). If the image does not appear, save the screenshot as `lighthouse.png` in the `public/screenshots/` folder.
+
+![Lighthouse audit](public/screenshots/lighthouse.png)
+
+> Note: Replace `public/screenshots/lighthouse.png` with your actual screenshot filename if different.

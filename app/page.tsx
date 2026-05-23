@@ -338,6 +338,7 @@ export default function Home() {
       <div className="absolute text-black bottom-0 left-0 w-full py-4 bg-gradient-to-t from-black/50 to-transparent text-center  text-sm">
         &copy; {new Date().getFullYear()} FlightBooking. All rights reserved.
       </div>
+      
     </div>
   );
 }
