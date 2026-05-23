@@ -121,7 +121,7 @@ export default function Home() {
       className="relative"
       style={{
         minHeight: 'calc(100vh - 64px)',
-        backgroundImage: 'url(/bg_flight.png)',
+        backgroundImage: 'url(/download.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -133,7 +133,7 @@ export default function Home() {
       {/* Hero Section */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
         <div className="text-center mb-12">
-          <motion.div 
+          {/* <motion.div 
             className="flex justify-center mb-6"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -142,7 +142,7 @@ export default function Home() {
             <div className="bg-blue-600 p-4 rounded-full">
               <Plane className="w-8 h-8 text-white" />
             </div>
-          </motion.div>
+          </motion.div> */}
           <motion.h1 
             className="text-4xl sm:text-5xl font-bold text-white mb-4"
             initial={{ opacity: 0, y: 20 }}

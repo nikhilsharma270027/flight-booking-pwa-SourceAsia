@@ -67,7 +67,7 @@ export default function Navigation() {
           {/* Logo/Brand */}
           <Link href="/" className="flex items-center gap-2 font-bold text-xl text-blue-600">
             <Plane className="w-6 h-6" />
-            <span className=" sm:inline">Flight Booking</span>
+            <span className=" sm:inline">SourceAsia Flight</span>
           </Link>
 
           {/* Desktop Navigation Links */}
