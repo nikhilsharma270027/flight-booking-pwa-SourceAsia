@@ -98,8 +98,8 @@ BEGIN
   -- Get current booking details
   SELECT b.flight_id, b.seat_id, b.total_price
   INTO v_old_flight_id, v_old_seat_id, v_old_price
-  FROM bookings
-  WHERE id = p_booking_id;
+  FROM bookings b
+  WHERE b.id = p_booking_id;
   
   IF v_old_flight_id IS NULL THEN
     RETURN QUERY SELECT FALSE, 'Booking not found'::TEXT, 0;
@@ -121,7 +121,7 @@ BEGIN
   SELECT base_price + COALESCE(s.extra_fee, 0)
   INTO v_new_price
   FROM flights f
-  LEFT JOIN seats s ON s.id = p_new_seat_id
+  LEFT JOIN seats s ON s.flight_id = f.id AND s.id = p_new_seat_id
   WHERE f.id = p_new_flight_id;
   
   v_fee := GREATEST(0, v_new_price - v_old_price);

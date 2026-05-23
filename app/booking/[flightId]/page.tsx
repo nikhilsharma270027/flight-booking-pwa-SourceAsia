@@ -106,7 +106,6 @@ export default function BookingPage() {
   useEffect(() => {
     const supabase = createClient();
     let channel: any = null;
-    let isSubscribed = false;
 
     const fetchSeatsAndSubscribe = async () => {
       try {
@@ -125,40 +124,38 @@ export default function BookingPage() {
           },
         });
 
-        // Add event listener before subscribing
-        channel.on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "seats",
-            filter: `flight_id=eq.${flightId}`,
-          },
-          (payload: any) => {
-            console.log("Seat update received:", payload);
-            if (payload.new) {
-              const updatedSeat = payload.new as any;
-              setSeats((prevSeats) =>
-                prevSeats.map((seat) =>
-                  seat.id === updatedSeat.id
-                    ? {
-                        ...seat,
-                        isAvailable: updatedSeat.is_available,
-                      }
-                    : seat
-                )
-              );
+        // Add event listener BEFORE subscribing
+        channel
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "seats",
+              filter: `flight_id=eq.${flightId}`,
+            },
+            (payload: any) => {
+              console.log("Seat update received:", payload);
+              if (payload.new) {
+                const updatedSeat = payload.new as any;
+                setSeats((prevSeats) =>
+                  prevSeats.map((seat) =>
+                    seat.id === updatedSeat.id
+                      ? {
+                          ...seat,
+                          isAvailable: updatedSeat.is_available,
+                        }
+                      : seat
+                  )
+                );
+              }
             }
-          }
-        );
-
-        // Subscribe after listener is attached
-        channel.subscribe((status: string) => {
-          isSubscribed = status === "SUBSCRIBED";
-          if (status === "SUBSCRIBED") {
-            console.log("Realtime subscription established");
-          }
-        });
+          )
+          .subscribe((status: string) => {
+            if (status === "SUBSCRIBED") {
+              console.log("Realtime subscription established");
+            }
+          });
       } catch (error) {
         console.error("Error fetching seats:", error);
         toast.error("Failed to load seats");
@@ -170,8 +167,11 @@ export default function BookingPage() {
     fetchSeatsAndSubscribe();
 
     return () => {
-      if (channel && isSubscribed) {
-        supabase.removeChannel(channel);
+      // Always unsubscribe
+      if (channel) {
+        supabase.removeChannel(channel).then(() => {
+          console.log("Channel unsubscribed");
+        });
       }
     };
   }, [flightId]);

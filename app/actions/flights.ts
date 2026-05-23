@@ -67,6 +67,8 @@ export async function getFlightSeats(flightId: string): Promise<SeatInfo[]> {
   try {
     const supabase = await createClient();
 
+    console.log("Fetching seats for flight:", flightId);
+
     const { data, error } = await supabase
       .from("seats")
       .select("*")
@@ -74,8 +76,14 @@ export async function getFlightSeats(flightId: string): Promise<SeatInfo[]> {
       .order("seat_number", { ascending: true });
 
     if (error) {
-      console.error("Error fetching seats:", error);
+      console.error("Error fetching seats - DB error:", error);
       return [];
+    }
+
+    console.log("Seats found in DB:", data?.length || 0);
+
+    if (!data || data.length === 0) {
+      console.warn("NO SEATS FOUND FOR FLIGHT:", flightId, "- This means the seats table is empty or seed didn't run");
     }
 
     return (

@@ -1,0 +1,24 @@
+FLIGHT ITINERARY & RECEIPT
+========================================
+PNR Code: SF16FH
+Booking ID: c4b37815-9b7f-494e-b4ee-74354c988d17
+
+PASSENGER INFORMATION
+========================================
+Name: Sharma
+
+FLIGHT DETAILS
+========================================
+Flight: AA102
+Route: New York → London
+Departure: May 23, 2026 05:03
+Arrival: May 23, 2026 17:03
+Seat: 1E
+
+PRICE INFORMATION
+========================================
+Total Price: $680.00
+
+Status: CONFIRMED
+========================================
+Thank you for booking with us!

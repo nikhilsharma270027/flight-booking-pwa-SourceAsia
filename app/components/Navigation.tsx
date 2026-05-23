@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plane, LogOut, User, Home, ChevronDown } from "lucide-react";
+import { Plane, LogOut, User, Home, ChevronDown, Menu, X } from "lucide-react";
 import { signOut, getSession } from "@/app/actions/auth";
 import { useUserStore } from "@/lib/stores/userStore";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -66,10 +67,10 @@ export default function Navigation() {
           {/* Logo/Brand */}
           <Link href="/" className="flex items-center gap-2 font-bold text-xl text-blue-600">
             <Plane className="w-6 h-6" />
-            <span className="hidden sm:inline">Flight Booking</span>
+            <span className=" sm:inline">Flight Booking</span>
           </Link>
 
-          {/* Navigation Links */}
+          {/* Desktop Navigation Links */}
           <div className="hidden md:flex gap-6 items-center">
             <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors flex items-center gap-1">
               <Home className="w-4 h-4" />
@@ -77,13 +78,28 @@ export default function Navigation() {
             </Link>
             {isLoggedIn && (
               <Link href="/my-bookings" className="text-gray-700 hover:text-blue-600 transition-colors">
+
                 My Bookings
               </Link>
             )}
           </div>
 
-          {/* Auth Actions */}
+          {/* Right side: Mobile menu button + Auth */}
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Toggle mobile menu"
+            >
+              {showMobileMenu ? (
+                <X className="w-6 h-6 text-gray-700" />
+              ) : (
+                <Menu className=" w-6 h-6 text-gray-700 z-10" />
+              )}
+            </button>
+
+            {/* Auth Actions */}
             {!isLoading && (
               <>
                 {isLoggedIn ? (
@@ -146,6 +162,29 @@ export default function Navigation() {
             )}
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {showMobileMenu && (
+          <div className="z-10 absolute top-16 right-0 w-full md:w-auto bg-white rounded-lg shadow-lg rmd:hidden border-t border-gray-200 py-4 px-2 space-y-2">
+            <Link
+              href="/"
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </Link>
+            {isLoggedIn && (
+              <Link
+                href="/my-bookings"
+                onClick={() => setShowMobileMenu(false)}
+                className="block px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                My Bookings
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Click outside to close menu */}

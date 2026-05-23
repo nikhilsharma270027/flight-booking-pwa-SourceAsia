@@ -54,12 +54,16 @@ export default function ReschedulePage() {
   }, [bookingId, router]);
 
   const handleFlightSelect = async (flight: FlightForReschedule) => {
+    console.log("Flight selected:", flight.id);
     setSelectedNewFlight(flight);
     setSelectedNewSeat(null);
 
     try {
       const seats = await getFlightSeats(flight.id);
-      setAvailableSeats(seats.filter((s) => s.isAvailable));
+      console.log("Available seats loaded:", seats.length);
+      const availableOnly = seats.filter((s) => s.isAvailable);
+      console.log("Filtered available seats:", availableOnly.length);
+      setAvailableSeats(availableOnly);
     } catch (error) {
       console.error("Error loading seats:", error);
       toast.error("Failed to load available seats");
@@ -140,11 +144,13 @@ export default function ReschedulePage() {
 
           {alternateFlights.length > 0 ? (
             <div className="space-y-4">
-              {alternateFlights.map((flight, idx) => (
+              {alternateFlights.map((flight, idx) => {
+                const isSelected = selectedNewFlight?.id === flight.id;
+                return (
                 <motion.div
                   key={flight.id}
                   className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedNewFlight?.id === flight.id
+                    isSelected
                       ? "border-blue-600 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
@@ -152,9 +158,8 @@ export default function ReschedulePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   whileHover={{ y: -3 }}
-                  onClick={() => handleFlightSelect(flight)}
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center" onClick={() => handleFlightSelect(flight)}>
                     <div>
                       <p className="text-sm text-gray-600">Flight</p>
                       <p className="text-lg font-semibold text-gray-900">{flight.flightNo}</p>
@@ -174,8 +179,11 @@ export default function ReschedulePage() {
                         id={`flight-${flight.id}`}
                         type="radio"
                         name="flight"
-                        checked={selectedNewFlight?.id === flight.id}
-                        onChange={() => handleFlightSelect(flight)}
+                        checked={isSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleFlightSelect(flight);
+                        }}
                         className="w-4 h-4 cursor-pointer"
                         aria-label={`Select flight ${flight.flightNo}`}
                       />
@@ -183,14 +191,17 @@ export default function ReschedulePage() {
                   </div>
 
                   {/* Seats for Selected Flight */}
-                  {selectedNewFlight?.id === flight.id && availableSeats.length > 0 && (
+                  {isSelected && availableSeats.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-semibold text-gray-900 mb-3">Select Seat:</p>
                       <div className="grid grid-cols-6 gap-2">
                         {availableSeats.slice(0, 12).map((seat) => (
                           <button
                             key={seat.id}
-                            onClick={() => setSelectedNewSeat(seat.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedNewSeat(seat.id);
+                            }}
                             aria-label={`Seat ${seat.seatNumber}, ${selectedNewSeat === seat.id ? 'selected' : 'available'}`}
                             className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
                               selectedNewSeat === seat.id
@@ -209,8 +220,14 @@ export default function ReschedulePage() {
                       )}
                     </div>
                   )}
+                  {isSelected && availableSeats.length === 0 && (
+                    <div className="mt-4 pt-4 border-t text-center">
+                      <p className="text-sm text-gray-600">No available seats on this flight</p>
+                    </div>
+                  )}
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-gray-600">No alternative flights available</p>
