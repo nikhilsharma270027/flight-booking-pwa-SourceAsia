@@ -74,11 +74,12 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 mb-2">
               <Mail className="w-4 h-4 inline mr-2" />
               Email Address
             </label>
             <input
+              id="signup-email"
               type="email"
               name="email"
               value={formData.email}
@@ -89,11 +90,12 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 mb-2">
               <Lock className="w-4 h-4 inline mr-2" />
               Password
             </label>
             <input
+              id="signup-password"
               type="password"
               name="password"
               value={formData.password}

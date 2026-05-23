@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# dont add CLAUDE.md, AGENTS.md, or any other markdown files that are not documentation for the project expect README.md
+CLAUDE.md
+AGENTS.md
+COMPLETION_SUMMARY.md
+DEVELOPER_GUIDE.md
+QUICKSTART.md
+README-COMPLETION.md
+README-DEVELOPER.md
+README-QUICKSTART.md

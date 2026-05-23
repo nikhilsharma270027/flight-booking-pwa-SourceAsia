@@ -324,6 +324,8 @@ export default function BookingPage() {
                               key={seat.id}
                               onClick={() => !isOccupied && !isOtherPassengerSeat && handleSeatSelect(passengerIdx, seat.id)}
                               disabled={isOccupied || isOtherPassengerSeat}
+                              aria-label={`${seat.seatNumber} seat, ${isSelected ? 'selected' : ''} ${isOccupied ? 'occupied' : 'available'}`}
+                              title={seat.seatNumber}
                               className={`
                                 w-10 h-10 sm:w-8 sm:h-8 rounded text-xs font-semibold transition-all
                                 ${isSelected ? "bg-blue-600 text-white" : ""}
@@ -331,7 +333,6 @@ export default function BookingPage() {
                                 ${isOccupied && !isSelected ? "bg-gray-300 text-gray-500 cursor-not-allowed" : ""}
                                 ${!isSelected && !isOccupied && !isOtherPassengerSeat ? "bg-green-50 border border-green-500 text-green-700 hover:bg-green-100" : ""}
                               `}
-                              title={seat.seatNumber}
                             >
                               {seat.seatNumber.replace(/[A-Z]/g, '')}
                             </button>
@@ -447,8 +448,9 @@ export default function BookingPage() {
 
                 <form className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label htmlFor={`passenger-${idx}-fullname`} className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                     <input
+                      id={`passenger-${idx}-fullname`}
                       type="text"
                       value={passenger.fullName}
                       onChange={(e) => handlePassengerChange(idx, "fullName", e.target.value)}
@@ -458,8 +460,9 @@ export default function BookingPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Passport</label>
+                    <label htmlFor={`passenger-${idx}-passport`} className="block text-sm font-medium text-gray-700 mb-1">Passport</label>
                     <input
+                      id={`passenger-${idx}-passport`}
                       type="text"
                       value={passenger.passportNo}
                       onChange={(e) => handlePassengerChange(idx, "passportNo", e.target.value)}
@@ -476,8 +479,9 @@ export default function BookingPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+                    <label htmlFor={`passenger-${idx}-nationality`} className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
                     <select
+                      id={`passenger-${idx}-nationality`}
                       value={passenger.nationality}
                       onChange={(e) => handlePassengerChange(idx, "nationality", e.target.value)}
                       className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white cursor-pointer"
@@ -492,8 +496,9 @@ export default function BookingPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <label htmlFor={`passenger-${idx}-dob`} className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                     <input
+                      id={`passenger-${idx}-dob`}
                       type="date"
                       value={passenger.dob}
                       onChange={(e) => handlePassengerChange(idx, "dob", e.target.value)}

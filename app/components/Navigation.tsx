@@ -90,6 +90,8 @@ export default function Navigation() {
                   <div className="relative">
                     <button
                       onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      aria-label="Toggle profile menu"
+                      aria-expanded={showProfileMenu}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                     >
                       <User className="w-4 h-4" />

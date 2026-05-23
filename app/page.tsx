@@ -173,11 +173,12 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Origin */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="origin-select" className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="w-4 h-4 inline mr-2" />
                   From (Origin)
                 </label>
                 <select
+                  id="origin-select"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
                   className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer"
@@ -198,11 +199,12 @@ export default function Home() {
 
               {/* Destination */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="destination-select" className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="w-4 h-4 inline mr-2" />
                   To (Destination)
                 </label>
                 <select
+                  id="destination-select"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer"
@@ -226,11 +228,12 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Departure Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="departure-date" className="block text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="w-4 h-4 inline mr-2" />
                   Departure Date
                 </label>
                 <input
+                  id="departure-date"
                   type="date"
                   value={departureDate}
                   onChange={(e) => setDepartureDate(e.target.value)}
@@ -241,11 +244,12 @@ export default function Home() {
 
               {/* Passengers */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="passengers-select" className="block text-sm font-medium text-gray-700 mb-2">
                   <Users className="w-4 h-4 inline mr-2" />
                   Number of Passengers
                 </label>
                 <select
+                  id="passengers-select"
                   value={passengers}
                   onChange={(e) => setPassengers(e.target.value)}
                   className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
