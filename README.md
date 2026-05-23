@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flight Booking PWA
 
-## Getting Started
+A responsive flight booking Progressive Web App (PWA) with realtime seat selection, bookings management, rescheduling and cancellation. Built with Next.js (App Router), Supabase (Postgres + Realtime), Zustand state, Tailwind CSS and Framer Motion for UI animations.
 
-First, run the development server:
+## Features
+
+- Flight search and results
+- Interactive seat map with realtime availability
+- Multi-passenger booking flow
+- Booking confirmation with PNR
+- My Bookings: cancel & reschedule (DB-enforced rules)
+- RPC functions for atomic seat locking and reschedule
+- Supabase RLS policies (user-scoped access)
+- PWA support (manifest, service worker via `next-pwa`, offline page)
+- Accessibility improvements (90+ Lighthouse score)
+
+## Requirements
+
+- Node.js 18+ (recommended)
+- npm or yarn
+- Supabase project (database + Auth)
+
+## Environment Variables
+
+>Create a `.env.local` in the project root (DO NOT commit). Example keys used by the app:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>  # used only server-side
+NEXTAUTH_URL=http://localhost:3000
+```
+
+If you want, I can generate a `.env.example` file with these variable names.
+
+## Local Setup
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Build for production:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm run start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database & Seeding
 
-## Learn More
+Migrations and seed scripts are in `supabase/migrations` and `supabase/seed.sql`.
 
-To learn more about Next.js, take a look at the following resources:
+To seed sample flights and seats (run on your supabase DB):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Open Supabase dashboard → SQL Editor
+2. Run the SQL in `supabase/seed.sql`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Notes:
+- Seats are created per-flight with `is_available = TRUE` by default.
+- RPC functions are in `supabase/migrations/003_rpc_functions.sql`.
 
-## Deploy on Vercel
+## PWA
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `next-pwa` is configured in `next.config.ts` and served from `/public`.
+- Manifest is at `/public/manifest.json` and icons are in `/public`.
+- An offline page is provided at `/offline`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+To test PWA behavior:
+- Build and run `npm run build && npm run start`
+- Open in Chrome and run Lighthouse PWA audit
+
+## Deployment (Vercel)
+
+- Link your GitHub repo to Vercel
+- Add environment variables in Project Settings (same keys as `.env.local`)
+- Production build will run `npm run build`
+
+## Testing & Validation
+
+- Manual E2E flows: Search → Book → Confirm → My Bookings → Reschedule/Cancel
+- Run Lighthouse PWA & Accessibility audits in Chrome DevTools (Target: 90+ accessibility)
+
+## Developer Notes
+
+- Supabase server client is in `lib/supabase/server.ts` and uses service role keys for RPCs requiring elevated access.
+- Realtime: seat updates use Supabase Realtime channels and are cleaned up on unmount.
+- State: Zustand store is in `lib/stores` with persist (sensitive fields are excluded).
+
+## Next Steps (suggested)
+
+- Add `.env.example` (I can create it)
+- Add automated E2E tests (Playwright or Cypress)
+- Add Lighthouse CI for automated audits
+
+---
+
+If you want, I can now:
+- Create `.env.example` with variable names,
+- Run a Lighthouse audit and attach the PWA screenshot,
+- Or push any remaining commits / create a release.
+
+Which should I do next?
