@@ -7,6 +7,7 @@ import Link from "next/link";
 import { CheckCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { motion } from "framer-motion";
 
 export default function ConfirmationPage() {
   const params = useParams();
@@ -96,21 +97,42 @@ Thank you for booking with us!
     <div className="min-h-[calc(100vh-64px)] bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* Success Message */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8 text-center">
-          <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+        <motion.div 
+          className="bg-white rounded-lg shadow-md p-8 mb-8 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+          </motion.div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
           <p className="text-gray-600 mb-4">Your flight has been successfully booked</p>
-        </div>
+        </motion.div>
 
         {/* PNR Code */}
-        <div className="bg-blue-50 border-2 border-blue-600 rounded-lg p-6 mb-8">
+        <motion.div 
+          className="bg-blue-50 border-2 border-blue-600 rounded-lg p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
           <p className="text-sm text-gray-600 mb-2">Your PNR Code</p>
           <p className="text-4xl font-bold text-blue-600 font-mono">{booking.pnrCode}</p>
           <p className="text-xs text-gray-500 mt-2">Save this code for your records</p>
-        </div>
+        </motion.div>
 
         {/* Booking Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <motion.div 
+          className="bg-white rounded-lg shadow-md p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
           <h2 className="text-xl font-bold text-gray-900 mb-6">Booking Details</h2>
 
           <div className="space-y-4">
@@ -168,10 +190,15 @@ Thank you for booking with us!
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Actions */}
-        <div className="flex gap-4">
+        <motion.div 
+          className="flex gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+        >
           <button
             onClick={handleDownloadItinerary}
             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
@@ -188,7 +215,7 @@ Thank you for booking with us!
           <Link href="/" className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-center">
             New Search
           </Link>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

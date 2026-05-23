@@ -7,6 +7,7 @@ import { getFlightSeats, SeatInfo } from "@/app/actions/flights";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function ReschedulePage() {
   const params = useParams();
@@ -139,14 +140,18 @@ export default function ReschedulePage() {
 
           {alternateFlights.length > 0 ? (
             <div className="space-y-4">
-              {alternateFlights.map((flight) => (
-                <div
+              {alternateFlights.map((flight, idx) => (
+                <motion.div
                   key={flight.id}
                   className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                     selectedNewFlight?.id === flight.id
                       ? "border-blue-600 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  whileHover={{ y: -3 }}
                   onClick={() => handleFlightSelect(flight)}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
@@ -201,7 +206,7 @@ export default function ReschedulePage() {
                       )}
                     </div>
                   )}
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : (

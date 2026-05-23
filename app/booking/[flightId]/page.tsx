@@ -7,6 +7,7 @@ import { getFlightSeats, getFlightDetails, SeatInfo, generatePNRCode, lockSeat, 
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { motion } from "framer-motion";
 
 // Common countries list
 const COUNTRIES = [
@@ -312,7 +313,7 @@ export default function BookingPage() {
                         {seatClass === "business" && " (+$100)"}
                       </h3>
 
-                      <div className="grid grid-cols-5 gap-1">
+                      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 sm:gap-1">
                         {seatsByClass[seatClass].map((seat) => {
                           const isSelected = seat.id === selectedSeats[passengerIdx];
                           const isOtherPassengerSeat = selectedSeats.some((s, idx) => s === seat.id && idx !== passengerIdx);
@@ -324,7 +325,7 @@ export default function BookingPage() {
                               onClick={() => !isOccupied && !isOtherPassengerSeat && handleSeatSelect(passengerIdx, seat.id)}
                               disabled={isOccupied || isOtherPassengerSeat}
                               className={`
-                                w-8 h-8 rounded text-xs font-semibold transition-all
+                                w-10 h-10 sm:w-8 sm:h-8 rounded text-xs font-semibold transition-all
                                 ${isSelected ? "bg-blue-600 text-white" : ""}
                                 ${isOtherPassengerSeat ? "bg-orange-300 cursor-not-allowed" : ""}
                                 ${isOccupied && !isSelected ? "bg-gray-300 text-gray-500 cursor-not-allowed" : ""}
@@ -383,13 +384,13 @@ export default function BookingPage() {
           <div className="flex gap-4">
             <button
               onClick={() => router.back()}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
             >
               Back
             </button>
             <button
               onClick={handleContinueToDetails}
-              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="flex-1 px-6 py-3 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
             >
               Continue to Passenger Details
             </button>
@@ -431,7 +432,13 @@ export default function BookingPage() {
           {/* Passenger Forms */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {passengersData.map((passenger, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-md p-6">
+              <motion.div 
+                key={idx} 
+                className="bg-white rounded-lg shadow-md p-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.15 }}
+              >
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Passenger {idx + 1}</h3>
                 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-900">
@@ -494,7 +501,7 @@ export default function BookingPage() {
                     />
                   </div>
                 </form>
-              </div>
+              </motion.div>
             ))}
           </div>
 
@@ -502,14 +509,14 @@ export default function BookingPage() {
           <div className="flex gap-4">
             <button
               onClick={() => setCurrentStep("seat-selection")}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
             >
               Back
             </button>
             <button
               onClick={handleCompleteBooking}
               disabled={isBooking}
-              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 px-6 py-3 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
             >
               {isBooking ? "Processing..." : `Complete Booking (${passengerCount} Passenger${passengerCount !== 1 ? "s" : ""})`}
             </button>

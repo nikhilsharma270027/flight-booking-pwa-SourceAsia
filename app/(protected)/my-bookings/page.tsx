@@ -6,6 +6,7 @@ import { getMyBookings, cancelBooking, BookingWithDetails } from "@/app/actions/
 import { toast } from "sonner";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { Trash2, RefreshCw, ArrowRight, AlertTriangle } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
@@ -54,6 +55,10 @@ export default function MyBookingsPage() {
       } else {
         toast.error(result.message || "Failed to cancel booking");
       }
+      // i want to refresh
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error("Error cancelling booking:", error);
       toast.error("Failed to cancel booking");
@@ -98,9 +103,16 @@ export default function MyBookingsPage() {
         {/* Bookings List or Empty State */}
         {bookings && bookings.length > 0 ? (
           <div className="space-y-4">
-            {bookings.map((booking) => (
-              <div key={booking.id} className="bg-gray-50 rounded-lg shadow-md p-6 border border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            {bookings.map((booking, idx) => (
+              <motion.div 
+                key={booking.id} 
+                className="bg-gray-50 rounded-lg shadow-md p-6 border border-gray-200"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                whileHover={{ y: -3 }}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4">
                   {/* Flight Info */}
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Flight</p>
@@ -129,9 +141,9 @@ export default function MyBookingsPage() {
                 </div>
 
                 {/* Bottom Section */}
-                <div className="border-t pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="border-t pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                   {/* Status & Price */}
-                  <div className="flex items-center gap-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                     <div>
                       <p className="text-sm text-gray-600">PNR Code</p>
                       <p className="font-mono font-bold text-blue-600">{booking.pnrCode}</p>
@@ -157,17 +169,17 @@ export default function MyBookingsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Link
                       href={`/my-bookings/${booking.id}/reschedule`}
-                      className="flex items-center gap-1 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors text-sm font-medium"
+                      className="flex items-center justify-center sm:justify-start gap-1 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors text-sm font-medium"
                     >
                       <RefreshCw className="w-4 h-4" />
                       Reschedule
                     </Link>
                     <button
                       onClick={() => setShowCancelConfirm(booking.id)}
-                      className="flex items-center gap-1 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center sm:justify-start gap-1 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={getTimeUntilDeparture(booking.departsAt).withinTwoHours}
                       title={getTimeUntilDeparture(booking.departsAt).withinTwoHours ? "Cannot cancel within 2 hours of departure" : ""}
                     >
@@ -194,11 +206,11 @@ export default function MyBookingsPage() {
                 {/* Cancel Confirmation Modal */}
                 {showCancelConfirm === booking.id && !getTimeUntilDeparture(booking.departsAt).withinTwoHours && (
                   <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50"
                     onClick={() => !cancellingId && setShowCancelConfirm(null)}
                   >
                     <div 
-                      className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+                      className="bg-white rounded-t-lg sm:rounded-lg shadow-xl max-w-md w-full sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-start gap-3 mb-4">
@@ -238,18 +250,18 @@ export default function MyBookingsPage() {
                         Are you sure you want to cancel this booking? The full amount of ${booking.totalPrice.toFixed(2)} will be refunded to your account.
                       </p>
 
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                         <button
                           onClick={() => handleCancelBooking(booking.id)}
                           disabled={cancellingId === booking.id}
-                          className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
+                          className="flex-1 px-4 py-3 sm:py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
                         >
                           {cancellingId === booking.id ? "Cancelling..." : "Yes, Cancel Booking"}
                         </button>
                         <button
                           onClick={() => setShowCancelConfirm(null)}
                           disabled={cancellingId === booking.id}
-                          className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-300 text-gray-800 rounded-lg transition-colors text-sm font-medium"
+                          className="flex-1 px-4 py-3 sm:py-2 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-300 text-gray-800 rounded-lg transition-colors text-sm font-medium"
                         >
                           No, Keep It
                         </button>
@@ -257,7 +269,7 @@ export default function MyBookingsPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : (

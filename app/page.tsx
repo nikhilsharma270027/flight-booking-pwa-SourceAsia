@@ -7,6 +7,7 @@ import { getSession } from "@/app/actions/auth";
 import { getFeaturedFlights, FeaturedRoute } from "@/app/actions/flights";
 import { Plane, Calendar, MapPin, Users, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 // Available airports from seed data
 const AIRPORTS = [
@@ -132,21 +133,41 @@ export default function Home() {
       {/* Hero Section */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
         <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
+          <motion.div 
+            className="flex justify-center mb-6"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="bg-blue-600 p-4 rounded-full">
               <Plane className="w-8 h-8 text-white" />
             </div>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+          </motion.div>
+          <motion.h1 
+            className="text-4xl sm:text-5xl font-bold text-white mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             Find and Book Your Next Flight
-          </h1>
-          <p className="text-lg text-gray-100 max-w-2xl mx-auto">
+          </motion.h1>
+          <motion.p 
+            className="text-lg text-gray-100 max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             Search for the best flight deals from thousands of routes worldwide
-          </p>
+          </motion.p>
         </div>
 
         {/* Search Form */}
-        <div className="bg-white rounded-lg shadow-xl p-6 sm:p-8 max-w-4xl mx-auto mb-16">
+        <motion.div 
+          className="bg-white rounded-lg shadow-xl p-4 sm:p-6 md:p-8 max-w-4xl mx-auto mb-12 sm:mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+        >
           <form onSubmit={handleSearch} className="space-y-6">
             {/* First Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,11 +269,16 @@ export default function Home() {
               {isLoading ? "Searching..." : "Search Flights"}
             </button>
           </form>
-        </div>
+        </motion.div>
 
         {/* Featured Flights Section */}
         {!isLoadingFeatured && featuredFlights.length > 0 && (
-          <div className="max-w-6xl mx-auto">
+          <motion.div 
+            className="max-w-6xl mx-auto"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.5 }}
+          >
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-white mb-2">✨ Popular Routes</h2>
               <p className="text-gray-100">Browse our most booked flights and find amazing deals</p>
@@ -260,10 +286,14 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {featuredFlights.map((route, idx) => (
-                <button
+                <motion.button
                   key={idx}
                   onClick={() => handleFeaturedFlightClick(route.origin, route.destination)}
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all text-left group cursor-pointer"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5 + idx * 0.1 }}
+                  whileHover={{ y: -5 }}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -293,10 +323,10 @@ export default function Home() {
                     Book Now
                     <ArrowRight className="w-4 h-4" />
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
       {/* // footer could go here if needed

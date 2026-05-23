@@ -7,6 +7,7 @@ import { searchFlights, FlightSearchResult } from "@/app/actions/flights";
 import { ArrowRight, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { format, differenceInMinutes, parseISO } from "date-fns";
+import { motion } from "framer-motion";
 
 export default function SearchResults() {
   const router = useRouter();
@@ -127,12 +128,16 @@ export default function SearchResults() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Available Flights ({flights.length})
             </h3>
-            {flights.map((flight) => (
-              <div
+            {flights.map((flight, idx) => (
+              <motion.div
                 key={flight.id}
                 className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                whileHover={{ y: -5 }}
               >
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-start md:items-center">
                   {/* Flight Info */}
                   <div>
                     <p className="text-sm text-gray-600">Flight Number</p>
@@ -158,20 +163,20 @@ export default function SearchResults() {
                   </div>
 
                   {/* Price & Button */}
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-right">
+                  <div className="flex flex-col sm:flex-row md:flex-col items-start sm:items-center md:items-end gap-2 mt-4 sm:mt-0">
+                    <div className="sm:flex-1 md:flex-none md:text-right">
                       <p className="text-sm text-gray-600">From</p>
                       <p className="text-2xl font-bold text-blue-600">${flight.basePrice}</p>
                     </div>
                     <button
                       onClick={() => handleSelectFlight(flight)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      className="w-full sm:w-auto md:w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base font-medium"
                     >
                       Select
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : (
